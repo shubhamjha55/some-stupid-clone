@@ -10,6 +10,7 @@ import { toast } from "react-toastify";
 import { problems } from "@/utils/problems";
 import { useRouter } from "next/router";
 import useLocalStorage from "@/hooks/useLocalStorage";
+import { Tooltip } from "@nextui-org/react";
 
 type PlaygroundProps = {
 	problem: Problem;
@@ -24,9 +25,6 @@ export interface ISettings {
 }
 
 const Playground: React.FC<PlaygroundProps> = ({ problem, setSuccess, setSolved }) => {
-	const [activeTestCaseId, setActiveTestCaseId] = useState<number>(0);
-	let [userCode, setUserCode] = useState<string>(problem.starterCode);
-
 	const [fontSize, setFontSize] = useLocalStorage("lcc-fontSize", "16px");
 
 	const [settings, setSettings] = useState<ISettings>({
@@ -39,115 +37,96 @@ const Playground: React.FC<PlaygroundProps> = ({ problem, setSuccess, setSolved 
 		query: { pid },
 	} = useRouter();
 
-	const handleSubmit = async () => {
-		try {
-			userCode = userCode.slice(userCode.indexOf(problem.starterFunctionName));
-			const cb = new Function(`return ${userCode}`)();
-			const handler = problems[pid as string].handlerFunction;
-
-			if (typeof handler === "function") {
-				const success = handler(cb);
-				if (success) {
-					toast.success("Congrats! All tests passed!", {
-						position: "top-center",
-						autoClose: 3000,
-						theme: "dark",
-					});
-					setSuccess(true);
-					setTimeout(() => {
-						setSuccess(false);
-					}, 4000);
-
-					// Logic to handle solved problems without Firebase can go here
-					setSolved(true);
-				}
-			}
-		} catch (error: any) {
-			console.log(error.message);
-			if (
-				error.message.startsWith("AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:")
-			) {
-				toast.error("Oops! One or more test cases failed", {
-					position: "top-center",
-					autoClose: 3000,
-					theme: "dark",
-				});
-			} else {
-				toast.error(error.message, {
-					position: "top-center",
-					autoClose: 3000,
-					theme: "dark",
-				});
-			}
-		}
-	};
-
 	useEffect(() => {
 		const code = localStorage.getItem(`code-${pid}`);
-		setUserCode(code ? JSON.parse(code) : problem.starterCode);
+		//To be used later
+		//localStorage.setItem(`code-${pid}`, JSON.stringify(value));
+		//setUserCode(code ? JSON.parse(code) : problem.starterCode);
 	}, [pid, problem.starterCode]);
 
 	const onChange = (value: string) => {
-		setUserCode(value);
+		// /setUserCode(value);
+		const updatedFiles = [...files];
+		updatedFiles[currentFileIndex].content = value;
 		localStorage.setItem(`code-${pid}`, JSON.stringify(value));
+	};
+
+	const [files, setFiles] = useState([{ name: 'file1.js', content: problem.starterCode }]); // Initial file
+	const [currentFileIndex, setCurrentFileIndex] = useState(0);
+
+	const handleFileChange = (index: number) => {
+		setCurrentFileIndex(index);
+	};
+
+	const handleCodeChange = (value: string) => {
+		if(files.length === 0) {
+			addNewFile();
+		} else if(currentFileIndex >= files.length) {
+			setCurrentFileIndex(0);
+		}
+		const updatedFiles = [...files];
+		updatedFiles[currentFileIndex].content = value;
+		setFiles(updatedFiles);
+	};
+
+	const addNewFile = () => {
+		setFiles([...files, { name: `file${files.length + 1}.js`, content: problem.starterCode }]);
+		setCurrentFileIndex(files.length); // Switch to the newly created file
+	};
+
+	const removeFile = (index: number) => {
+		const updatedFiles = files.filter((_, i) => i !== index);
+		setFiles(updatedFiles);
+
+		if (index === currentFileIndex || index >= updatedFiles.length) {
+			setCurrentFileIndex(0); // Select the first file by default after deletion
+		} else if (index < currentFileIndex) {
+			setCurrentFileIndex(currentFileIndex - 1); // Adjust index if earlier file is removed
+		}
 	};
 
 	return (
 		<div className='flex flex-col bg-dark-layer-1 relative overflow-x-hidden'>
 			<PreferenceNav settings={settings} setSettings={setSettings} />
-
-			<Split className='h-[calc(100vh-94px)]' direction='vertical' sizes={[60, 40]} minSize={60}>
+			<div className='flex items-center'>
+				{files.length && files.map((file, index) => (
+					<div className='flex flex-col'>
+						<button
+							key={index}
+							className={`relative cursor-pointer rounded focus:outline-none text-dark-label-2 hover:bg-dark-fill-3 px-9 py-1.5 pl-3 
+								${index === currentFileIndex ?  'bg-dark-fill-2 border-t-2 border-blue-500 shadow-md' : 'border-r border-b border-gray-700'}`} 
+							onClick={() => handleFileChange(index)}
+						>
+							{file.name}
+							<Tooltip content={'Remove File'} placement={'bottom'} delay={0} className='relative bg-gray-800 text-white px-2 py-1 rounded-lg shadow-md text-sm'>
+								<button
+									onClick={() => removeFile(index)}
+									className='absolute top-[-2px] right-0 hover:bg-dark-fill-3 text-white-400 hover:text-white-600 px-2 py-2'
+								>
+									×
+								</button>
+							</Tooltip>
+						</button>
+					</div>
+				))}
+				<button onClick={addNewFile} className='flex cursor-pointer rounded focus:outline-none text-dark-label-2 hover:bg-dark-fill-2  pl-3 px-2 py-1.5 font-medium'>
+					+ 
+				</button>
+			</div>
+			<Split className='h-[calc(100vh-94px)]'>
 				<div className='w-full overflow-auto'>
+				{files.length && 
 					<CodeMirror
-						value={userCode}
+						value={files[currentFileIndex]?.content}
 						theme={vscodeDark}
-						onChange={onChange}
+						onChange={handleCodeChange}
 						extensions={[javascript()]}
 						style={{ fontSize: settings.fontSize }}
-					/>
+					/>}
 				</div>
-				<div className='w-full px-5 overflow-auto'>
-					{/* testcase heading */}
-					<div className='flex h-10 items-center space-x-6'>
-						<div className='relative flex h-full flex-col justify-center cursor-pointer'>
-							<div className='text-sm font-medium leading-5 text-white'>Testcases</div>
-							<hr className='absolute bottom-0 h-0.5 w-full rounded-full border-none bg-white' />
-						</div>
-					</div>
-
-					<div className='flex'>
-						{problem.examples.map((example, index) => (
-							<div
-								className='mr-2 items-start mt-2 '
-								key={example.id}
-								onClick={() => setActiveTestCaseId(index)}
-							>
-								<div className='flex flex-wrap items-center gap-y-4'>
-									<div
-										className={`font-medium items-center transition-all focus:outline-none inline-flex bg-dark-fill-3 hover:bg-dark-fill-2 relative rounded-lg px-4 py-1 cursor-pointer whitespace-nowrap
-										${activeTestCaseId === index ? "text-white" : "text-gray-500"}
-									`}
-									>
-										Case {index + 1}
-									</div>
-								</div>
-							</div>
-						))}
-					</div>
-
-					<div className='font-semibold my-4'>
-						<p className='text-sm font-medium mt-4 text-white'>Input:</p>
-						<div className='w-full cursor-text rounded-lg border px-3 py-[10px] bg-dark-fill-3 border-transparent text-white mt-2'>
-							{problem.examples[activeTestCaseId].inputText}
-						</div>
-						<p className='text-sm font-medium mt-4 text-white'>Output:</p>
-						<div className='w-full cursor-text rounded-lg border px-3 py-[10px] bg-dark-fill-3 border-transparent text-white mt-2'>
-							{problem.examples[activeTestCaseId].outputText}
-						</div>
-					</div>
-				</div>
+				
 			</Split>
-			<EditorFooter handleSubmit={handleSubmit} />
+			
 		</div>
 	);
 };
