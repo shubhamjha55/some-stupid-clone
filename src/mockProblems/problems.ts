@@ -7,7 +7,7 @@ export type Problem = {
 	videoId?: string;
 };
 
-export const problems: Problem[] = [
+export const mockProblems: Problem[] = [
 	{
 		id: "two-sum",
 		title: "Two Sum",
