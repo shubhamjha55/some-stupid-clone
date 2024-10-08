@@ -3,6 +3,7 @@ import React from "react";
 import { useSetRecoilState } from "recoil";
 import { authModalState } from "@/atoms/authModalAtom";
 import Image from "next/image";
+import Logout from "../Buttons/Logout";
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import { BsList } from "react-icons/bs";
 import Timer from "../Timer/Timer";
@@ -16,7 +17,7 @@ type TopbarProps = {
 
 const Topbar: React.FC<TopbarProps> = ({ problemPage }) => {
   // Removed Firebase authentication-related state and logic
-  const user = null; // Dummy user
+  const user = window["user"]; // Dummy user
   const setAuthModalState = useSetRecoilState(authModalState);
   const router = useRouter();
 
@@ -83,7 +84,7 @@ const Topbar: React.FC<TopbarProps> = ({ problemPage }) => {
         <div className="flex items-center space-x-4 flex-1 justify-end">
           <div>
             <a
-              href="https://www.buymeacoffee.com/burakorkmezz"
+              href="https://github.com/shubhamjha55"
               target="_blank"
               rel="noreferrer"
               className="bg-dark-fill-3 py-1.5 px-3 cursor-pointer rounded text-brand-orange hover:bg-dark-fill-2"
@@ -91,8 +92,33 @@ const Topbar: React.FC<TopbarProps> = ({ problemPage }) => {
               Premium
             </a>
           </div>
+          {!user && (
+						<Link
+							href='/auth'
+							onClick={() => setAuthModalState((prev) => ({ ...prev, isOpen: true, type: "login" }))}
+						>
+							<button className='bg-brand-orange text-white px-2 py-1 sm:px-4 rounded-md text-sm font-medium
+                hover:text-brand-orange hover:bg-white hover:border-2 hover:border-brand-orange border-2 border-transparent
+                transition duration-300 ease-in-out'>
+                Sign In
+              </button>
+						</Link>
+					)}
           {/* Removed Sign In button and user-related code */}
           {problemPage && <Timer />}
+          {user && (
+						<div className='cursor-pointer group relative'>
+							<Image src='/avatar.png' alt='Avatar' width={30} height={30} className='rounded-full' />
+							<div
+								className='absolute top-10 left-2/4 -translate-x-2/4  mx-auto bg-dark-layer-1 text-brand-orange p-2 rounded shadow-lg 
+								z-40 group-hover:scale-100 scale-0 
+								transition-all duration-300 ease-in-out'
+							>
+								<p className='text-sm'>{user.email}</p>
+							</div>
+						</div>
+					)}
+					{user && <Logout />}
         </div>
       </div>
     </nav>

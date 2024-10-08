@@ -16,7 +16,7 @@ const AuthPage: React.FC<AuthPageProps> = () => {
   const router = useRouter();
 
   useEffect(() => {
-    // Simulate user check logic
+    // Add a logic later to check if token and userinfo in local storage 
     if (user) router.push("/");
     if (!loading && !user) setPageLoading(false);
   }, [user, router, loading]);
